@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.venv/
+
+# local scrape outputs
+data/*.db

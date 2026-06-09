@@ -1,5 +1,6 @@
-from onpe_results.cli import main
+def main():
+    print("Hello from onpe-results!")
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

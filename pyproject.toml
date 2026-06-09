@@ -1,9 +1,7 @@
 [project]
 name = "onpe-results"
 version = "0.1.0"
-description = "Regional-level scraper for ONPE election result routes"
+description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-    "requests>=2.32.5",
-]
+dependencies = []

@@ -74,7 +74,14 @@ class OnpeClient:
 
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or Settings()
-        self._session = requests.Session(impersonate=self.settings.impersonate)
+        session_kwargs: dict[str, Any] = {"impersonate": self.settings.impersonate}
+        if self.settings.proxy:
+            # libcurl (under curl_cffi) speaks SOCKS natively — no PySocks needed.
+            session_kwargs["proxies"] = {
+                "http": self.settings.proxy,
+                "https": self.settings.proxy,
+            }
+        self._session = requests.Session(**session_kwargs)
         self._limiter = _RateLimiter(self.settings.requests_per_second)
         self._headers = {
             "Accept": "application/json, text/plain, */*",

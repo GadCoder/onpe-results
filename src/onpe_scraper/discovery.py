@@ -160,6 +160,12 @@ class DiscoveryRecorder:
         launch_kwargs: dict[str, Any] = {"headless": not self.headed}
         if self.channel:
             launch_kwargs["channel"] = self.channel
+        if self.settings.proxy:
+            # Chromium wants {"server": "..."} and doesn't grok the socks5h
+            # scheme — it resolves DNS through SOCKS5 remotely anyway.
+            launch_kwargs["proxy"] = {
+                "server": self.settings.proxy.replace("socks5h://", "socks5://")
+            }
 
         with sync_playwright() as pw:
             browser = pw.chromium.launch(**launch_kwargs)

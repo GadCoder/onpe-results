@@ -25,6 +25,12 @@ DEFAULT_REFERER = f"{BASE_URL}/main/resumen"
 #: of JSON), so this is mandatory, not cosmetic.
 DEFAULT_IMPERSONATE = "chrome124"
 
+#: Default SOCKS proxy used when ``--proxy`` is given without a value. The site
+#: filters datacenter IPs, so from a VPS requests must exit through a residential
+#: IP — here a Tailscale + Android SOCKS5 exit. ``socks5h`` resolves DNS through
+#: the proxy too (matches ``curl --socks5-hostname``).
+DEFAULT_PROXY = "socks5h://100.66.12.22:1080"
+
 
 @dataclass(slots=True)
 class Settings:
@@ -44,6 +50,9 @@ class Settings:
     backoff_base: float = 0.75
     backoff_max: float = 20.0
     timeout: float = 30.0
+
+    #: SOCKS/HTTP proxy URL (e.g. ``socks5h://host:port``) or None for direct.
+    proxy: str | None = None
 
     # Output.
     output_dir: Path = field(default_factory=lambda: Path("data"))

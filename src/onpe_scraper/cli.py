@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 from .api import OnpeApi
-from .config import Settings
+from .config import DEFAULT_PROXY, Settings
 from .http import OnpeClient, OnpeError
 from .scraper import GeoLevel, OnpeScraper
 from .storage import Storage
@@ -30,7 +30,22 @@ def _build_settings(args: argparse.Namespace) -> Settings:
         settings.requests_per_second = args.rps
     if getattr(args, "output", None):
         settings.output_dir = Path(args.output)
+    if getattr(args, "proxy", None):
+        settings.proxy = args.proxy
     return settings
+
+
+def _add_proxy_flag(p: argparse.ArgumentParser) -> None:
+    """``--proxy`` (bare → the hardcoded default) routes traffic via a SOCKS
+    proxy, needed when the host IP is filtered by the edge (e.g. a VPS)."""
+    p.add_argument(
+        "--proxy",
+        nargs="?",
+        const=DEFAULT_PROXY,
+        default=None,
+        metavar="URL",
+        help=f"route via SOCKS/HTTP proxy; bare --proxy uses {DEFAULT_PROXY}",
+    )
 
 
 def cmd_scrape(args: argparse.Namespace) -> int:
@@ -155,6 +170,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--id-eleccion", type=int, help="override the election id")
     sp.add_argument("--output", default="data", help="output directory (default: data)")
     sp.add_argument("--rps", type=float, help="max requests/second (default: 6)")
+    _add_proxy_flag(sp)
     sp.set_defaults(func=cmd_scrape)
 
     dp = sub.add_parser("discover", help="record the SPA's API calls with a browser")
@@ -166,11 +182,13 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="use Playwright's Chromium instead of system Chrome",
     )
+    _add_proxy_flag(dp)
     dp.set_defaults(func=cmd_discover)
 
     mp = sub.add_parser("mesa", help="look up a single polling-station acta")
     mp.add_argument("codigo", help="codigoMesa (6-digit)")
     mp.add_argument("--rps", type=float)
+    _add_proxy_flag(mp)
     mp.set_defaults(func=cmd_mesa)
 
     rp = sub.add_parser(
@@ -196,6 +214,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     rp.add_argument("--id-eleccion", type=int, help="override the election id")
     rp.add_argument("--rps", type=float)
+    _add_proxy_flag(rp)
     rp.set_defaults(func=cmd_report)
 
     return parser

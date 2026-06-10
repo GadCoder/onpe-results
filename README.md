@@ -105,6 +105,23 @@ name. Timestamps are rendered in `America/Lima`.
 Useful flags: `--rps` (request rate, default 6/s), `--no-abroad`,
 `--id-eleccion` (override the auto-detected election), `-v` (debug logging).
 
+### Running behind a proxy (`--proxy`)
+
+The edge filters datacenter IPs, so from a VPS the direct request returns the
+SPA shell (`BlockedError`). Route through a residential SOCKS exit (e.g. a
+Tailscale + phone proxy). Every command accepts `--proxy`:
+
+```bash
+uv run onpe-scraper report --proxy                       # bare → hardcoded default
+uv run onpe-scraper report --proxy socks5h://host:1080   # explicit override
+```
+
+Bare `--proxy` uses the hardcoded default in `config.DEFAULT_PROXY`
+(`socks5h://100.66.12.22:1080`). `socks5h` resolves DNS through the proxy too
+(matches `curl --socks5-hostname`); `curl_cffi`/libcurl speaks SOCKS natively,
+so no extra dependency. The proxy goes through the phone, so expect higher
+latency — consider a gentler `--rps` for the geo sweep.
+
 ## Output
 
 Written under `--output` (default `data/`):

@@ -23,6 +23,10 @@ from .http import OnpeClient, OnpeError
 from .scraper import GeoLevel, OnpeScraper
 from .storage import Storage
 
+#: `report` exit code when the run produced no new data (not an error; a sender
+#: should treat this as "nothing to publish"). Distinct from 2 (real error).
+EXIT_NO_NEW_DATA = 20
+
 
 def _build_settings(args: argparse.Namespace) -> Settings:
     settings = Settings()
@@ -124,32 +128,44 @@ def cmd_report(args: argparse.Namespace) -> int:
         )
 
     previous = history.previous_to(current.timestamp)
+    # New data == this ONPE update (fechaActualizacion) isn't in history yet.
+    is_new = history.append(current)
+
     report = build_report(current, previous, top_geo=args.top_geo)
+    report["is_new"] = is_new
 
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
+    # report.json is always written (carries is_new for JSON consumers).
     out.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    # Three standalone message files (general / departamentos / países).
     msg_dir = out.parent
     msg_paths = {
         "general": msg_dir / "mensaje_general.txt",
         "departamentos": msg_dir / "mensaje_departamentos.txt",
         "paises": msg_dir / "mensaje_paises.txt",
     }
-    for key, path in msg_paths.items():
-        path.write_text(report["mensajes"][key], encoding="utf-8")
+    # Only (re)write the message files when there's genuinely new data — so their
+    # content/mtime never changes on a no-op run. (Also write if missing, so the
+    # files always exist for a downstream sender.)
+    files_missing = not all(p.exists() for p in msg_paths.values())
+    if is_new or files_missing:
+        for key, path in msg_paths.items():
+            path.write_text(report["mensajes"][key], encoding="utf-8")
 
-    is_new = history.append(current)
-    print(report["mensajes"]["general"])
-    print(f"\n→ report: {out}")
-    for key, path in msg_paths.items():
-        print(f"→ {key}: {path}")
-    print(
-        f"→ history: {history.path}"
-        + ("" if is_new else " (no new data; unchanged)")
-    )
-    return 0
+    # Machine-readable status line for shell consumers (grep NEW_RESULTS=).
+    print(f"NEW_RESULTS={'true' if is_new else 'false'}")
+    print(f"timestamp={report['timestamp']} ({report['timestamp_display']})")
+    if is_new:
+        print(report["mensajes"]["general"])
+        print(f"\n→ report: {out}")
+        for key, path in msg_paths.items():
+            print(f"→ {key}: {path}")
+        print(f"→ history: {history.path}")
+        return 0
+
+    print("No new ONPE update since the last run — messages not regenerated.")
+    return EXIT_NO_NEW_DATA
 
 
 def build_parser() -> argparse.ArgumentParser:

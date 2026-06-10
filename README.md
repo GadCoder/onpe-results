@@ -87,6 +87,27 @@ three standalone, ready-to-send message files:
 Each geo line shows the current **% processed**, the count, and the change:
 `• LORETO: 94.401% procesado (2.546/2.697) · +30 actas, +1.112 pp`.
 
+**Knowing whether to publish (no-op detection).** A run only counts as "new" if
+ONPE published a fresh `fechaActualizacion`. On a no-new-data run the command:
+
+- prints `NEW_RESULTS=false` (first stdout line; `NEW_RESULTS=true` otherwise),
+- **does not rewrite** the `mensaje_*.txt` files (content + mtime unchanged),
+- sets `"is_new": false` in `report.json`,
+- exits with code **20** (vs `0` when new, `2` on error).
+
+So a sender can gate three ways — pick one:
+```bash
+# by exit code:
+.venv/bin/onpe-scraper report --proxy; [ $? -eq 0 ] && publish
+
+# by status line:
+.venv/bin/onpe-scraper report --proxy | grep -q '^NEW_RESULTS=true' && publish
+
+# by JSON field:
+jq -e '.is_new' data/report.json >/dev/null && publish
+```
+`report.json` is always written; the `.txt` files change only when there's news.
+
 ```
 $ uv run onpe-scraper report --output data/report.json --history data/history.jsonl
 📬 Nuevos resultados ONPE
